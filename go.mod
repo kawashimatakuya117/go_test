@@ -2,8 +2,9 @@ module github.com/GoogleCloudPlatform/golang-samples/functions/helloworld
 
 go 1.22.5
 
+require github.com/GoogleCloudPlatform/functions-framework-go v1.8.1
+
 require (
-	github.com/GoogleCloudPlatform/functions-framework-go v1.8.1 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.14.0 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
