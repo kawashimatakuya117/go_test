@@ -1,43 +1,68 @@
 package helloworld
 
 import (
-	"context"
+	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
-func TestHandleChatWorkAPIResponse(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Hello, World!")
-	})
+func Test_HelloGet_サーバーとしてHelloWorldを返す(t *testing.T) {
+	// Arrange
+	reqBody := bytes.NewBufferString("request body")
+	req := httptest.NewRequest(http.MethodGet, "/", reqBody)
 
-	ts := httptest.NewServer(mux)
-	defer ts.Close()
-
-	cli := &http.Client{}
-	req, err := http.NewRequestWithContext(context.TODO(), "GET", ts.URL, strings.NewReader(""))
-	if err != nil {
-		t.Errorf("NewRequest failed: %v", err)
-	}
+	// レスポンスを受け止める*httptest.ResponseRecorder
+	got := httptest.NewRecorder()
 
 	// Act
-	resp, err := cli.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	helloGet(got, req)
 
-	got, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
+	// Assertion
+	// http.Clientなどで受け取ったhttp.Responseを検証するときとほぼ変わらない
+	if got.Code != http.StatusOK {
+		t.Errorf("want %d, but %d", http.StatusOK, got.Code)
 	}
-	resp.Body.Close()
-	want := "Hello, World!"
-	if string(got) != want {
-		t.Errorf("want %q, but %q", want, got)
+	// Bodyは*bytes.Buffer型なので文字列の比較は少しラク
+	if got := got.Body.String(); got != "Hello, World!" {
+		t.Errorf("want %s, but %s", "Hello, World!", got)
+	}
+}
+
+func Test_ClientHello_クライアントとして指定したURLからレスポンスを受け取る(t *testing.T) {
+	// Arrange
+	// ServeMuxオブジェクトなどを用意してルーティングしてもよい
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "{ \"hoge\": \"fuga\" }")
+	})
+	// 別goroutine上でリッスンが開始される
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// Act
+	resp := ClientHello(ts.URL)
+
+	// Assertion
+	if resp["hoge"] != "fuga" {
+		t.Fatal("error")
+	}
+}
+
+func Test_ServerClientHello_指定したURLのレスポンスからhogeの値を返す(t *testing.T) {
+	// Arrange
+	got := httptest.NewRecorder()
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "{ \"hoge\": \"fuga\" }")
+	})
+	// 別goroutine上でリッスンが開始される
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// Act
+	ServerClientHello(got, nil, ts.URL)
+	// Assertion
+	if got := got.Body.String(); got != "fuga" {
+		t.Errorf("want %s, but %s", "fuga", got)
 	}
 }
